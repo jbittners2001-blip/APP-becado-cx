@@ -1,0 +1,259 @@
+{
+  "version": "2.0.0",
+  "generadoEl": "2026-08-15",
+  "totalNodos": 19,
+  "nodos": [
+    {
+      "id": "plastica",
+      "titulo": "Cirugía Plástica y Reconstructiva",
+      "clase": "dominio",
+      "parent": null,
+      "tipo": null,
+      "escala": null,
+      "prerequisitos": [],
+      "xp": 0,
+      "archivo": "nodos/plastica.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura",
+      "titulo": "Defectos de cobertura cutánea",
+      "clase": "dominio",
+      "parent": "plastica",
+      "tipo": null,
+      "escala": null,
+      "prerequisitos": [
+        "plastica.principios.colgajos"
+      ],
+      "xp": 0,
+      "archivo": "nodos/plastica.cobertura.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.escalera",
+      "titulo": "Escalera y ascensor reconstructivo",
+      "clase": "estudio",
+      "parent": "plastica.cobertura",
+      "tipo": "criterio",
+      "escala": "miller",
+      "prerequisitos": [],
+      "xp": 120,
+      "archivo": "nodos/plastica.cobertura.escalera.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior",
+      "titulo": "Cobertura de miembro inferior",
+      "clase": "dominio",
+      "parent": "plastica.cobertura",
+      "tipo": null,
+      "escala": null,
+      "prerequisitos": [
+        "plastica.cobertura.escalera"
+      ],
+      "xp": 0,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo",
+      "titulo": "Cobertura de defectos maleolares",
+      "clase": "dominio",
+      "parent": "plastica.cobertura.miembro_inferior",
+      "tipo": null,
+      "escala": null,
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.principios"
+      ],
+      "xp": 0,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.avance",
+      "titulo": "Colgajos locales de avance y rotación",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo",
+      "tipo": "tecnica",
+      "escala": "zwisch",
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.evaluacion"
+      ],
+      "xp": 110,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.avance.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.evaluacion",
+      "titulo": "Evaluación del defecto maleolar y elección de técnica",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo",
+      "tipo": "diagnostico",
+      "escala": "miller",
+      "prerequisitos": [],
+      "xp": 130,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.evaluacion.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.microquirurgico",
+      "titulo": "Colgajo libre microquirúrgico en tobillo",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo",
+      "tipo": "criterio",
+      "escala": "miller",
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.evaluacion"
+      ],
+      "xp": 160,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.microquirurgico.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.propeller",
+      "titulo": "Colgajo propeller de perforante",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo",
+      "tipo": "tecnica",
+      "escala": "zwisch",
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.evaluacion"
+      ],
+      "xp": 150,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.propeller.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso",
+      "titulo": "Colgajo sural reverso",
+      "clase": "dominio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo",
+      "tipo": null,
+      "escala": null,
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.evaluacion"
+      ],
+      "xp": 0,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.sural_reverso.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.anatomia",
+      "titulo": "Anatomía vascular del territorio sural",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso",
+      "tipo": "anatomia",
+      "escala": "miller",
+      "prerequisitos": [],
+      "xp": 100,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.sural_reverso.anatomia.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.complicaciones",
+      "titulo": "Complicaciones del sural reverso",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso",
+      "tipo": "complicaciones",
+      "escala": "miller",
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.tecnica"
+      ],
+      "xp": 140,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.sural_reverso.complicaciones.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.criterio",
+      "titulo": "Indicación del sural reverso",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso",
+      "tipo": "criterio",
+      "escala": "miller",
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.anatomia"
+      ],
+      "xp": 120,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.sural_reverso.criterio.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.tecnica",
+      "titulo": "Técnica del sural reverso",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior.maleolo.sural_reverso",
+      "tipo": "tecnica",
+      "escala": "zwisch",
+      "prerequisitos": [
+        "plastica.cobertura.miembro_inferior.maleolo.sural_reverso.criterio"
+      ],
+      "xp": 150,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.sural_reverso.tecnica.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.cobertura.miembro_inferior.principios",
+      "titulo": "Principios por tercios de la pierna",
+      "clase": "estudio",
+      "parent": "plastica.cobertura.miembro_inferior",
+      "tipo": "criterio",
+      "escala": "miller",
+      "prerequisitos": [],
+      "xp": 130,
+      "archivo": "nodos/plastica.cobertura.miembro_inferior.principios.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.principios",
+      "titulo": "Principios básicos de reconstrucción",
+      "clase": "dominio",
+      "parent": "plastica",
+      "tipo": null,
+      "escala": null,
+      "prerequisitos": [],
+      "xp": 0,
+      "archivo": "nodos/plastica.principios.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.principios.colgajos",
+      "titulo": "Colgajos — clasificación y fundamento vascular",
+      "clase": "estudio",
+      "parent": "plastica.principios",
+      "tipo": "criterio",
+      "escala": "miller",
+      "prerequisitos": [
+        "plastica.principios.injertos"
+      ],
+      "xp": 140,
+      "archivo": "nodos/plastica.principios.colgajos.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.principios.curaciones",
+      "titulo": "Cicatrización y manejo de heridas",
+      "clase": "estudio",
+      "parent": "plastica.principios",
+      "tipo": "fisiologia",
+      "escala": "miller",
+      "prerequisitos": [],
+      "xp": 100,
+      "archivo": "nodos/plastica.principios.curaciones.md",
+      "flashcards": null
+    },
+    {
+      "id": "plastica.principios.injertos",
+      "titulo": "Injertos cutáneos",
+      "clase": "estudio",
+      "parent": "plastica.principios",
+      "tipo": "tecnica",
+      "escala": "zwisch",
+      "prerequisitos": [
+        "plastica.principios.curaciones"
+      ],
+      "xp": 120,
+      "archivo": "nodos/plastica.principios.injertos.md",
+      "flashcards": null
+    }
+  ]
+}
