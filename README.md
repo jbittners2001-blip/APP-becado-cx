@@ -87,7 +87,10 @@ npm run build                     # genera dist/index.html (archivo único)
 ## Roadmap
 
 - [x] Fase 1 — Especialidades + árbol jerárquico + Taller racionalizado +
-      lista vertical + mover por arrastre + configuración global
-- [ ] Fase 2 — Poblar más ramas (digestivo hasta fístula enteroatmosférica)
-- [ ] Fase 3 — Auth + Supabase + integración real con Google Drive (OAuth)
-- [ ] Fase 4 — Interrogación oral con IA y generación automática de cards
+      configuración global
+- [x] Fase 2 — Perfil por becado (progreso separado), respaldo en Google
+      Drive del propio usuario (OAuth, scope `drive.file`) e IA integrada
+      multi-proveedor (Claude / Gemini / ChatGPT) para generar resúmenes
+      y flashcards. Mover nodos por arrastre (drag & drop). Ver `DEPLOY.md`.
+- [ ] Fase 3 — Poblar más ramas (digestivo hasta fístula enteroatmosférica)
+- [ ] Fase 4 — Interrogación oral con IA en tiempo real

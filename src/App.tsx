@@ -19,7 +19,7 @@ function HUD({
   onAbrirPapelera: () => void;
   onAbrirConfiguracion: () => void;
 }) {
-  const { usuario, cardsVencidasHoy, renombrar, reiniciarProgreso, nodos } = useStore();
+  const { usuario, cardsVencidasHoy, renombrar, reiniciarProgreso, nodos, perfiles, cambiarPerfil } = useStore();
   const { perfil } = usuario;
   const siguiente = RANGOS.find((r) => r.xpMin > perfil.xpTotal);
   const anterior = [...RANGOS].reverse().find((r) => r.xpMin <= perfil.xpTotal)!;
@@ -36,8 +36,15 @@ function HUD({
       <div className="hud-vitales">
         <div className="vital">
           <span className="vital-etiqueta">BECADO</span>
-          <input className="vital-nombre" value={perfil.nombre}
-                 onChange={(e) => renombrar(e.target.value)} aria-label="Nombre" />
+          {perfiles.lista.length > 1 ? (
+            <select className="vital-perfil" value={perfiles.activo}
+                    onChange={(e) => cambiarPerfil(e.target.value)} aria-label="Cambiar becado">
+              {perfiles.lista.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </select>
+          ) : (
+            <input className="vital-nombre" value={perfil.nombre}
+                   onChange={(e) => renombrar(e.target.value)} aria-label="Nombre" />
+          )}
         </div>
         <div className="vital">
           <span className="vital-etiqueta">RANGO</span>

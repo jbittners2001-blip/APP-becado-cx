@@ -24,6 +24,7 @@ import {
   aSlug, nuevoId, type Flashcard, type Nodo, type TipoNodo, type EscalaEvaluacion,
 } from "./types";
 import { hoyISO } from "./srs";
+import { leerConfigIA, hayClaveActiva, generarConIA, NOMBRE_PROVEEDOR } from "./ia";
 
 type Pestana = "fuentes" | "nodos" | "cards";
 const MAX_SUBTEMAS_SUGERIDOS = 5;
@@ -136,6 +137,9 @@ function PasoFuentes({ padre }: { padre: Nodo }) {
   const [megaresumen, setMegaresumen] = useState(resumenDe(padre.id) || "");
   const [copiado, setCopiado] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState(false);
+  const [iaCargando, setIaCargando] = useState(false);
+  const [iaError, setIaError] = useState<string | null>(null);
+  const cfgIA = leerConfigIA();
 
   const agregar = () => {
     if (!texto.trim()) return;
@@ -182,6 +186,18 @@ function PasoFuentes({ padre }: { padre: Nodo }) {
   const guardar = () => {
     guardarResumen(padre.id, megaresumen);
     setGuardadoOk(true); setTimeout(() => setGuardadoOk(false), 1600);
+  };
+
+  const generarIA = async () => {
+    setIaCargando(true); setIaError(null);
+    try {
+      const texto = await generarConIA(cfgIA, promptMega, { maxTokens: 8000 });
+      setMegaresumen(texto.trim());
+    } catch (e: any) {
+      setIaError(e.message || "No se pudo generar.");
+    } finally {
+      setIaCargando(false);
+    }
   };
 
   return (
@@ -240,6 +256,21 @@ function PasoFuentes({ padre }: { padre: Nodo }) {
             </div>
             <pre className="prompt-texto">{promptMega}</pre>
           </div>
+
+          <div className="fila-ia">
+            {hayClaveActiva(cfgIA) ? (
+              <button className="boton-ia" disabled={iaCargando} onClick={generarIA}>
+                {iaCargando ? "Generando…" : `✨ Generar con ${NOMBRE_PROVEEDOR[cfgIA.proveedor]}`}
+              </button>
+            ) : (
+              <p className="nota-fina">
+                Configura una API key en ⚙ Configuración para generar el resumen
+                automáticamente, o copia el prompt y pégalo en tu IA.
+              </p>
+            )}
+          </div>
+          {iaError && <p className="aviso-suave">{iaError}</p>}
+
           <label className="campo">
             <span>Pega aquí el megaresumen resultante (carpeta de resúmenes)</span>
             <textarea className="area-mega" rows={10} value={megaresumen}
@@ -534,6 +565,8 @@ function PasoCards({ padre }: { padre: Nodo }) {
   const [pegado, setPegado] = useState("");
   const [aviso, setAviso] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
+  const [iaCargando, setIaCargando] = useState(false);
+  const cfgIA = leerConfigIA();
 
   const existentes = cardsDe(nodeId);
 
@@ -573,27 +606,45 @@ function PasoCards({ padre }: { padre: Nodo }) {
     } catch { setAviso("El navegador bloqueó el portapapeles. Selecciona el texto y copia a mano."); }
   };
 
+  const procesarJSON = (texto: string) => {
+    const limpio = texto.replace(/```json|```/g, "").trim();
+    const datos = JSON.parse(limpio);
+    if (!Array.isArray(datos)) throw new Error("no es un array");
+    const base = existentes.length;
+    const nuevas: Flashcard[] = datos.map((d: any, i: number) => {
+      if (!d.pregunta || !d.respuesta) throw new Error("falta pregunta o respuesta");
+      return {
+        id: `${nodeId}#${String(base + i + 1).padStart(3, "0")}`,
+        nodeId,
+        pregunta: String(d.pregunta),
+        respuesta: String(d.respuesta),
+        nivel: ["recordar", "aplicar", "analizar"].includes(d.nivel) ? d.nivel : "aplicar",
+      };
+    });
+    guardarCards(nodeId, [...existentes, ...nuevas]);
+    return { agregadas: nuevas.length, total: base + nuevas.length };
+  };
+
   const importarCards = () => {
     try {
-      const limpio = pegado.replace(/```json|```/g, "").trim();
-      const datos = JSON.parse(limpio);
-      if (!Array.isArray(datos)) throw new Error("no es un array");
-      const base = existentes.length;
-      const nuevas: Flashcard[] = datos.map((d: any, i: number) => {
-        if (!d.pregunta || !d.respuesta) throw new Error("falta pregunta o respuesta");
-        return {
-          id: `${nodeId}#${String(base + i + 1).padStart(3, "0")}`,
-          nodeId,
-          pregunta: String(d.pregunta),
-          respuesta: String(d.respuesta),
-          nivel: ["recordar", "aplicar", "analizar"].includes(d.nivel) ? d.nivel : "aplicar",
-        };
-      });
-      guardarCards(nodeId, [...existentes, ...nuevas]);
+      const { agregadas, total } = procesarJSON(pegado);
       setPegado("");
-      setAviso(`${nuevas.length} flashcards agregadas. Total del nodo: ${base + nuevas.length}.`);
+      setAviso(`${agregadas} flashcards agregadas. Total del nodo: ${total}.`);
     } catch (e: any) {
       setAviso(`No pude leer el JSON (${e.message}). Pega solo el array, desde [ hasta ].`);
+    }
+  };
+
+  const generarIA = async () => {
+    setIaCargando(true); setAviso(null);
+    try {
+      const texto = await generarConIA(cfgIA, prompt, { maxTokens: 4000 });
+      const { agregadas, total } = procesarJSON(texto);
+      setAviso(`${agregadas} flashcards generadas con IA. Total del nodo: ${total}.`);
+    } catch (e: any) {
+      setAviso(`No se pudo generar (${e.message}).`);
+    } finally {
+      setIaCargando(false);
     }
   };
 
@@ -638,6 +689,21 @@ function PasoCards({ padre }: { padre: Nodo }) {
           </button>
         </div>
         <pre className="prompt-texto">{prompt}</pre>
+      </div>
+
+      <div className="fila-ia">
+        {hayClaveActiva(cfgIA) ? (
+          <button className="boton-ia" disabled={iaCargando || !resumenDe(nodeId).trim()} onClick={generarIA}>
+            {iaCargando ? "Generando…"
+              : !resumenDe(nodeId).trim() ? "El nodo necesita un resumen primero"
+              : `✨ Generar ${cantidad} flashcards con ${NOMBRE_PROVEEDOR[cfgIA.proveedor]}`}
+          </button>
+        ) : (
+          <p className="nota-fina">
+            Configura una API key en ⚙ Configuración para generar las flashcards
+            automáticamente, o copia el prompt y pega el JSON abajo.
+          </p>
+        )}
       </div>
 
       <label className="campo">

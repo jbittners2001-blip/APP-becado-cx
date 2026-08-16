@@ -19,8 +19,41 @@ import {
 } from "./content";
 import { estadoInicial, revisar, estaVencida, hoyISO, type Calidad } from "./srs";
 
-const K_PROG = "beca-rpg:progreso";
+const K_PROG = "beca-rpg:progreso";        // legado (perfil único, pre-fase 2)
 const K_CONT = "beca-rpg:contenido";
+const K_PERFILES = "beca-rpg:perfiles";    // registro de perfiles de becado
+const progKey = (id: string) => `${K_PROG}:${id}`;
+
+/** Registro de perfiles: quién está activo y la lista de becados. El
+ *  progreso de cada uno vive en su propia clave (progKey). El contenido
+ *  (currículo, nodos, cards) es compartido entre todos los perfiles. */
+export interface RegistroPerfiles {
+  activo: string;
+  lista: { id: string; nombre: string }[];
+}
+
+/** Inicializa el registro de perfiles, migrando el progreso antiguo
+ *  (perfil único) al primer perfil la primera vez. */
+function iniciarPerfiles(): RegistroPerfiles {
+  try {
+    const crudo = localStorage.getItem(K_PERFILES);
+    if (crudo) {
+      const reg = JSON.parse(crudo) as RegistroPerfiles;
+      if (reg.lista?.length && reg.lista.some((p) => p.id === reg.activo)) return reg;
+    }
+  } catch { /* cae a la migración */ }
+
+  const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  let nombre = "Becado";
+  const legado = localStorage.getItem(K_PROG);
+  if (legado) {
+    try { nombre = JSON.parse(legado)?.perfil?.nombre || "Becado"; } catch { /* nada */ }
+    if (!localStorage.getItem(progKey(id))) localStorage.setItem(progKey(id), legado);
+  }
+  const reg: RegistroPerfiles = { activo: id, lista: [{ id, nombre }] };
+  localStorage.setItem(K_PERFILES, JSON.stringify(reg));
+  return reg;
+}
 
 export const RANGOS = [
   { nombre: "Interno", xpMin: 0 },
@@ -84,19 +117,32 @@ interface API {
   cardsVencidasHoy: number;
   renombrar: (nombre: string) => void;
   reiniciarProgreso: () => void;
+  // perfiles de becado
+  perfiles: RegistroPerfiles;
+  crearPerfil: (nombre: string) => void;
+  cambiarPerfil: (id: string) => void;
+  eliminarPerfil: (id: string) => void;
+  // respaldo completo (para Google Drive): contenido + progreso del perfil activo
+  exportarEstado: () => string;
+  importarEstado: (json: string) => void;
 }
 
 const Ctx = createContext<API | null>(null);
 
 export function Store({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<EstadoUsuario>(() => leer(K_PROG, progresoVacio));
+  const [perfiles, setPerfiles] = useState<RegistroPerfiles>(iniciarPerfiles);
+  const [usuario, setUsuario] = useState<EstadoUsuario>(() => leer(progKey(perfiles.activo), progresoVacio));
   const [contenido, setContenido] = useState<ContenidoUsuario>(() => {
     const c = leer(K_CONT, contenidoVacio);
     // Compatibilidad con exportaciones/versiones anteriores sin estos campos
     return { ...contenidoVacio(), ...c };
   });
 
-  useEffect(() => { localStorage.setItem(K_PROG, JSON.stringify(usuario)); }, [usuario]);
+  // El progreso se guarda en la clave del perfil ACTIVO.
+  useEffect(() => {
+    localStorage.setItem(progKey(perfiles.activo), JSON.stringify(usuario));
+  }, [usuario, perfiles.activo]);
+  useEffect(() => { localStorage.setItem(K_PERFILES, JSON.stringify(perfiles)); }, [perfiles]);
   useEffect(() => { localStorage.setItem(K_CONT, JSON.stringify(contenido)); }, [contenido]);
 
   const nodos = useMemo(() => {
@@ -222,6 +268,52 @@ export function Store({ children }: { children: ReactNode }) {
 
   const importarContenido = (c: ContenidoUsuario) => setContenido({ ...contenidoVacio(), ...c });
 
+  /* ---------------- perfiles de becado ---------------- */
+
+  const nuevoIdPerfil = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+  const crearPerfil = (nombre: string) => {
+    const limpio = nombre.trim() || `Becado ${perfiles.lista.length + 1}`;
+    const id = nuevoIdPerfil();
+    const progreso: EstadoUsuario = { ...progresoVacio(), perfil: { nombre: limpio, rango: "Interno", xpTotal: 0 } };
+    localStorage.setItem(progKey(id), JSON.stringify(progreso));
+    setUsuario(progreso);
+    setPerfiles((p) => ({ activo: id, lista: [...p.lista, { id, nombre: limpio }] }));
+  };
+
+  const cambiarPerfil = (id: string) => {
+    if (id === perfiles.activo) return;
+    if (!perfiles.lista.some((p) => p.id === id)) return;
+    // el progreso actual ya está persistido por el efecto; cargamos el otro
+    setUsuario(leer(progKey(id), progresoVacio));
+    setPerfiles((p) => ({ ...p, activo: id }));
+  };
+
+  const eliminarPerfil = (id: string) => {
+    if (perfiles.lista.length <= 1) return; // siempre debe quedar uno
+    const restantes = perfiles.lista.filter((p) => p.id !== id);
+    localStorage.removeItem(progKey(id));
+    if (id === perfiles.activo) {
+      const siguiente = restantes[0].id;
+      setUsuario(leer(progKey(siguiente), progresoVacio));
+      setPerfiles({ activo: siguiente, lista: restantes });
+    } else {
+      setPerfiles((p) => ({ ...p, lista: restantes }));
+    }
+  };
+
+  /* ---------------- respaldo completo (Google Drive) ---------------- */
+
+  const exportarEstado = (): string =>
+    JSON.stringify({ version: "5.0.0", contenido, progreso: usuario }, null, 2);
+
+  const importarEstado = (json: string) => {
+    const datos = JSON.parse(json);
+    if (datos.contenido && Array.isArray(datos.contenido.nodos))
+      setContenido({ ...contenidoVacio(), ...datos.contenido });
+    if (datos.progreso && datos.progreso.perfil) setUsuario(datos.progreso as EstadoUsuario);
+  };
+
   /* ---------------- progreso ---------------- */
 
   const progresoDe = (nodeId: string): ProgresoNodo =>
@@ -291,8 +383,16 @@ export function Store({ children }: { children: ReactNode }) {
     agregarPlantilla, moverNodo, eliminarNodo, contenidoUsuario: contenido, importarContenido,
     restaurarDePapelera, purgarDePapelera, vaciarPapelera,
     usuario, progresoDe, estadoDe, completarMision, registrarReview, fijarNivel, cardsVencidasHoy,
-    renombrar: (nombre) => setUsuario((u) => ({ ...u, perfil: { ...u.perfil, nombre } })),
-    reiniciarProgreso: () => setUsuario(progresoVacio()),
+    renombrar: (nombre) => {
+      setUsuario((u) => ({ ...u, perfil: { ...u.perfil, nombre } }));
+      setPerfiles((p) => ({
+        ...p,
+        lista: p.lista.map((x) => (x.id === p.activo ? { ...x, nombre } : x)),
+      }));
+    },
+    reiniciarProgreso: () =>
+      setUsuario((u) => ({ ...progresoVacio(), perfil: { ...progresoVacio().perfil, nombre: u.perfil.nombre } })),
+    perfiles, crearPerfil, cambiarPerfil, eliminarPerfil, exportarEstado, importarEstado,
   };
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

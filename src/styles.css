@@ -377,3 +377,40 @@ svg g[role="button"]:focus circle:first-of-type { stroke: var(--vital); opacity:
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+
+/* ============================================================
+   Fase 2: IA, perfiles, Drive, configuración
+   ============================================================ */
+.fila-ia { margin: 10px 0; }
+.boton-ia {
+  width: 100%; background: var(--vital-tenue); color: var(--vital);
+  border: 1px solid var(--vital); border-radius: 6px; padding: 11px 14px;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s;
+}
+.boton-ia:hover:not(:disabled) { background: var(--vital); color: var(--fondo); }
+.boton-ia:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.seccion-config {
+  border: 1px solid var(--linea); border-radius: 8px;
+  padding: 4px 14px; margin: 12px 0; background: var(--superficie-2);
+}
+.seccion-config > summary {
+  cursor: pointer; font-family: var(--mono); font-size: 12px;
+  letter-spacing: 0.06em; color: var(--texto); padding: 10px 0; list-style: none;
+}
+.seccion-config > summary::-webkit-details-marker { display: none; }
+.seccion-config[open] > summary { border-bottom: 1px solid var(--linea); margin-bottom: 12px; }
+
+.lista-perfiles { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 6px; }
+.lista-perfiles li { display: flex; align-items: center; gap: 8px; }
+.lista-perfiles li.activo .perfil-nombre { color: var(--vital); font-weight: 700; }
+.perfil-nombre {
+  flex: 1; text-align: left; background: var(--superficie); border: 1px solid var(--linea);
+  color: var(--texto); padding: 9px 12px; border-radius: 5px; cursor: pointer; font-size: 13.5px;
+}
+.perfil-nombre:hover { border-color: var(--vital); }
+
+.vital-perfil {
+  background: var(--superficie-2); border: 1px solid var(--linea); color: var(--texto);
+  font-size: 13px; padding: 3px 6px; border-radius: 4px; max-width: 150px;
+}

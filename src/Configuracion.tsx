@@ -11,6 +11,14 @@ import { descendientesDe } from "./content";
 import type { ContenidoUsuario, Nodo, Flashcard } from "./types";
 import { hoyISO } from "./srs";
 import { guardarArchivo, abrirArchivo, soportaSelectorDeArchivos } from "./fileIO";
+import {
+  leerConfigIA, guardarConfigIA, MODELOS_SUGERIDOS, NOMBRE_PROVEEDOR,
+  type Proveedor, type IAConfig,
+} from "./ia";
+import {
+  leerClientId, guardarClientId, conectarDrive, desconectarDrive,
+  guardarEnDrive, cargarDeDrive, driveDisponible,
+} from "./drive";
 
 type Alcance = "todo" | "especialidad" | "dominio";
 
@@ -97,7 +105,11 @@ export function Configuracion({ onCerrar }: { onCerrar: () => void }) {
           <div><strong>{contenidoUsuario.papelera.length}</strong><span>en papelera</span></div>
         </div>
 
-        <p className="etiqueta-mono etiqueta-separador">GUARDAR / RESPALDAR</p>
+        <SeccionPerfiles />
+        <SeccionIA />
+        <SeccionDrive />
+
+        <p className="etiqueta-mono etiqueta-separador">GUARDAR / RESPALDAR (archivo)</p>
         <p className="aviso-suave">
           {soportaPicker
             ? "Tu navegador te deja elegir exactamente dónde guardar. Si usas Google Drive para escritorio, navega directo a tu carpeta sincronizada — eso lo deja en Drive."
@@ -158,5 +170,174 @@ export function Configuracion({ onCerrar }: { onCerrar: () => void }) {
         </p>
       </aside>
     </div>
+  );
+}
+
+/* ============================================================
+   Perfiles de becado
+   ============================================================ */
+function SeccionPerfiles() {
+  const { perfiles, crearPerfil, cambiarPerfil, eliminarPerfil } = useStore();
+  const [nuevo, setNuevo] = useState("");
+  const [abierto, setAbierto] = useState(false);
+
+  return (
+    <details className="seccion-config" open={abierto} onToggle={(e) => setAbierto((e.target as HTMLDetailsElement).open)}>
+      <summary>👤 Perfiles de becado ({perfiles.lista.length})</summary>
+      <p className="aviso-suave">
+        Cada becado tiene su propio progreso (XP, misiones, repaso). El contenido
+        de estudio (nodos, resúmenes, flashcards) es compartido entre todos.
+      </p>
+      <ul className="lista-perfiles">
+        {perfiles.lista.map((p) => (
+          <li key={p.id} className={p.id === perfiles.activo ? "activo" : ""}>
+            <button className="perfil-nombre" onClick={() => cambiarPerfil(p.id)}>
+              {p.id === perfiles.activo ? "● " : "○ "}{p.nombre}
+            </button>
+            {perfiles.lista.length > 1 && (
+              <button className="boton-secundario chico"
+                      onClick={() => { if (confirm(`¿Eliminar el perfil "${p.nombre}" y su progreso? El contenido no se borra.`)) eliminarPerfil(p.id); }}>
+                🗑
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <div className="fila-input-boton">
+        <input className="input-linea" value={nuevo} placeholder="Nombre del nuevo becado"
+               onChange={(e) => setNuevo(e.target.value)}
+               onKeyDown={(e) => { if (e.key === "Enter" && nuevo.trim()) { crearPerfil(nuevo); setNuevo(""); } }} />
+        <button className="boton-principal" style={{ marginTop: 0 }} disabled={!nuevo.trim()}
+                onClick={() => { crearPerfil(nuevo); setNuevo(""); }}>
+          + Crear
+        </button>
+      </div>
+    </details>
+  );
+}
+
+/* ============================================================
+   Integración de IA (Claude / Gemini / ChatGPT)
+   ============================================================ */
+function SeccionIA() {
+  const [cfg, setCfg] = useState<IAConfig>(() => leerConfigIA());
+  const [guardado, setGuardado] = useState(false);
+
+  const proveedores: Proveedor[] = ["anthropic", "google", "openai"];
+  const actualizar = (nueva: IAConfig) => { setCfg(nueva); guardarConfigIA(nueva); setGuardado(true); setTimeout(() => setGuardado(false), 1200); };
+
+  return (
+    <details className="seccion-config">
+      <summary>✨ Inteligencia artificial {cfg.claves[cfg.proveedor]?.trim() ? "· conectada" : "· sin clave"}</summary>
+      <p className="aviso-suave">
+        Pega tu propia API key para que la app genere resúmenes y flashcards
+        automáticamente en el Taller. La clave se guarda solo en este navegador;
+        no la uses en un equipo público. El flujo de copiar/pegar sigue disponible
+        sin clave.
+      </p>
+
+      <label className="campo">
+        <span>Proveedor (se prioriza Claude)</span>
+        <select value={cfg.proveedor} onChange={(e) => actualizar({ ...cfg, proveedor: e.target.value as Proveedor })}>
+          {proveedores.map((p) => <option key={p} value={p}>{NOMBRE_PROVEEDOR[p]}</option>)}
+        </select>
+      </label>
+
+      <label className="campo">
+        <span>API key de {NOMBRE_PROVEEDOR[cfg.proveedor]}</span>
+        <input className="input-linea" type="password" autoComplete="off"
+               value={cfg.claves[cfg.proveedor]}
+               placeholder="pega tu clave aquí"
+               onChange={(e) => actualizar({ ...cfg, claves: { ...cfg.claves, [cfg.proveedor]: e.target.value } })} />
+      </label>
+
+      <label className="campo">
+        <span>Modelo</span>
+        <input className="input-linea" list={`modelos-${cfg.proveedor}`}
+               value={cfg.modelos[cfg.proveedor]}
+               onChange={(e) => actualizar({ ...cfg, modelos: { ...cfg.modelos, [cfg.proveedor]: e.target.value } })} />
+        <datalist id={`modelos-${cfg.proveedor}`}>
+          {MODELOS_SUGERIDOS[cfg.proveedor].map((m) => <option key={m} value={m} />)}
+        </datalist>
+      </label>
+
+      {guardado && <p className="aviso-ok">Guardado.</p>}
+      <p className="nota-fina">
+        Claude: consola de Anthropic · Gemini: Google AI Studio · ChatGPT: platform.openai.com
+      </p>
+    </details>
+  );
+}
+
+/* ============================================================
+   Google Drive (respaldo en la nube del propio usuario)
+   ============================================================ */
+function SeccionDrive() {
+  const { exportarEstado, importarEstado } = useStore();
+  const [clientId, setClientId] = useState(() => leerClientId());
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+
+  const guardarId = () => { guardarClientId(clientId); setAviso("Client ID guardado."); };
+
+  const subir = async () => {
+    setCargando(true); setAviso(null);
+    try {
+      await conectarDrive();
+      await guardarEnDrive(exportarEstado());
+      setAviso("Guardado en tu Google Drive ✓");
+    } catch (e: any) { setAviso(e.message); } finally { setCargando(false); }
+  };
+
+  const bajar = async () => {
+    setCargando(true); setAviso(null);
+    try {
+      await conectarDrive();
+      const json = await cargarDeDrive();
+      if (json === null) { setAviso("No hay respaldo en tu Drive todavía."); }
+      else { importarEstado(json); setAviso("Restaurado desde tu Google Drive ✓"); }
+    } catch (e: any) { setAviso(e.message); } finally { setCargando(false); }
+  };
+
+  return (
+    <details className="seccion-config">
+      <summary>☁️ Google Drive {leerClientId() ? "" : "· sin configurar"}</summary>
+      <p className="aviso-suave">
+        Inicia sesión con tu cuenta de Google para guardar y restaurar tu
+        contenido y progreso en <strong>tu</strong> Drive. Requiere un Client ID
+        de Google (ver DEPLOY.md) y que la app esté publicada por HTTPS.
+      </p>
+
+      <label className="campo">
+        <span>Google OAuth Client ID</span>
+        <div className="fila-input-boton">
+          <input className="input-linea" value={clientId}
+                 placeholder="xxxxxxxx.apps.googleusercontent.com"
+                 onChange={(e) => setClientId(e.target.value)} />
+          <button className="boton-secundario chico" onClick={guardarId}>Guardar</button>
+        </div>
+      </label>
+
+      {!driveDisponible() && (
+        <p className="nota-fina">
+          El script de Google no está cargado (¿sin conexión, o abriste el archivo
+          local?). Publica la app por HTTPS para usar Drive.
+        </p>
+      )}
+
+      <div className="fila-botones">
+        <button className="boton-principal" style={{ marginTop: 0 }} disabled={cargando || !leerClientId()} onClick={subir}>
+          {cargando ? "…" : "⬆ Guardar en Drive"}
+        </button>
+        <button className="boton-secundario" disabled={cargando || !leerClientId()} onClick={bajar}>
+          ⬇ Restaurar de Drive
+        </button>
+      </div>
+      <button className="boton-secundario chico" style={{ marginTop: 8 }} onClick={() => { desconectarDrive(); setAviso("Sesión de Drive cerrada."); }}>
+        Cerrar sesión de Google
+      </button>
+
+      {aviso && <p className="aviso-suave" style={{ marginTop: 10 }}>{aviso}</p>}
+    </details>
   );
 }
