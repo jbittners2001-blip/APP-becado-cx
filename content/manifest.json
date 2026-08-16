@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
   "generadoEl": "2026-08-15",
-  "totalNodos": 19,
+  "totalNodos": 17,
   "nodos": [
     {
       "id": "plastica",
@@ -30,27 +30,13 @@
       "flashcards": null
     },
     {
-      "id": "plastica.cobertura.escalera",
-      "titulo": "Escalera y ascensor reconstructivo",
-      "clase": "estudio",
-      "parent": "plastica.cobertura",
-      "tipo": "criterio",
-      "escala": "miller",
-      "prerequisitos": [],
-      "xp": 120,
-      "archivo": "nodos/plastica.cobertura.escalera.md",
-      "flashcards": null
-    },
-    {
       "id": "plastica.cobertura.miembro_inferior",
       "titulo": "Cobertura de miembro inferior",
       "clase": "dominio",
       "parent": "plastica.cobertura",
       "tipo": null,
       "escala": null,
-      "prerequisitos": [
-        "plastica.cobertura.escalera"
-      ],
+      "prerequisitos": [],
       "xp": 0,
       "archivo": "nodos/plastica.cobertura.miembro_inferior.md",
       "flashcards": null
@@ -62,9 +48,7 @@
       "parent": "plastica.cobertura.miembro_inferior",
       "tipo": null,
       "escala": null,
-      "prerequisitos": [
-        "plastica.cobertura.miembro_inferior.principios"
-      ],
+      "prerequisitos": [],
       "xp": 0,
       "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.md",
       "flashcards": null
@@ -189,18 +173,6 @@
       ],
       "xp": 150,
       "archivo": "nodos/plastica.cobertura.miembro_inferior.maleolo.sural_reverso.tecnica.md",
-      "flashcards": null
-    },
-    {
-      "id": "plastica.cobertura.miembro_inferior.principios",
-      "titulo": "Principios por tercios de la pierna",
-      "clase": "estudio",
-      "parent": "plastica.cobertura.miembro_inferior",
-      "tipo": "criterio",
-      "escala": "miller",
-      "prerequisitos": [],
-      "xp": 130,
-      "archivo": "nodos/plastica.cobertura.miembro_inferior.principios.md",
       "flashcards": null
     },
     {

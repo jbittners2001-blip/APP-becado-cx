@@ -11,6 +11,7 @@ import { separarAspectosYSubtemas } from "./content";
 import { NOMBRE_TIPO, type NivelEscala, type Flashcard } from "./types";
 import { estaVencida, type Calidad } from "./srs";
 import { AccionesNodo } from "./AccionesNodo";
+import { CrearNodoManual } from "./CrearNodoManual";
 
 type Pestana = "misiones" | "resumen" | "flashcards" | "interrogacion";
 
@@ -39,6 +40,7 @@ export function NodeModal({
     indice, progresoDe, estadoDe, completarMision, fijarNivel, cardsDe, hijos, fuentesDe,
   } = useStore();
   const [pestana, setPestana] = useState<Pestana>("misiones");
+  const [mostrarCrear, setMostrarCrear] = useState(false);
   const nodo = indice.get(nodeId);
   if (!nodo) return null;
 
@@ -151,6 +153,23 @@ export function NodeModal({
               <button className="boton-secundario" onClick={() => onAbrirTaller(nodeId)}>
                 Abrir Taller: fuentes → resumen → flashcards
               </button>
+            </div>
+
+            <div className="bloque-profundizar">
+              <button className="boton-secundario" onClick={() => setMostrarCrear((v) => !v)}>
+                {mostrarCrear ? "Cerrar" : "+ Nodo nuevo aquí (manual)"}
+              </button>
+              {mostrarCrear && (
+                <>
+                  <p className="nota-fina">
+                    Se creará dentro de <strong>{nodo.titulo}</strong>, no en otro nivel.
+                  </p>
+                  <CrearNodoManual
+                    parentId={nodeId}
+                    onCreado={(id) => { setMostrarCrear(false); onNavegar(id); }}
+                  />
+                </>
+              )}
             </div>
           </>
         )}

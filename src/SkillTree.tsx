@@ -6,12 +6,13 @@
  * Aspectos (anatomía/criterio/técnica) → línea de color sólida
  * Subtemas (entidades específicas)     → línea discontinua gris
  *
- * Layout: dendrogram — las hojas se apilan verticalmente,
- * los nodos internos se centran entre su primer y último hijo.
+ * MOVER NODOS: botón "✏️ Modificar". En modo edición, arrastra
+ * cualquier nodo y suéltalo sobre un dominio (o sobre "nivel
+ * principal") para reasignar su padre. Sin <select>, sin ciclos.
  */
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "./store";
-import { separarAspectosYSubtemas } from "./content";
+import { separarAspectosYSubtemas, descendientesDe } from "./content";
 import { SIGLA_TIPO, type Nodo } from "./types";
 
 const NR  = 18;   // radio del nodo
@@ -19,6 +20,8 @@ const CW  = 142;  // ancho de columna (por nivel de profundidad)
 const RH  = 62;   // alto de fila (por hoja)
 const PX  = 28;   // padding izquierdo
 const PY  = 28;   // padding arriba
+
+const RAIZ = "__raiz__"; // destino de soltar = nivel principal
 
 const BRANCH_COLORS = [
   "#2ee6a8", "#f2b33d", "#5fb3ff", "#c98bff",
@@ -104,6 +107,12 @@ function NodoLabel({ titulo, cx, baseY }: { titulo: string; cx: number; baseY: n
   );
 }
 
+interface Arrastre {
+  id: string;
+  titulo: string;
+  descendientes: Set<string>;
+}
+
 export function SkillTreeView({
   especialidadId, onAbrirDominio, onAbrirEstudio, onAbrirCrearPrincipal,
 }: {
@@ -112,13 +121,22 @@ export function SkillTreeView({
   onAbrirEstudio: (id: string) => void;
   onAbrirCrearPrincipal: () => void;
 }) {
-  const { hijos, estadoDe, nodos } = useStore();
+  const { hijos, estadoDe, nodos, indice, moverNodo } = useStore();
   const roots = hijos(especialidadId);
+  const especialidad = indice.get(especialidadId);
 
   // Solo expandir el primer nivel inicialmente
   const [expandido, setExpandido] = useState<Set<string>>(
     () => new Set(roots.map(r => r.id))
   );
+
+  const [modoEdicion, setModoEdicion] = useState(false);
+  const [arrastre, setArrastre] = useState<Arrastre | null>(null);
+  const [objetivo, setObjetivo] = useState<string | null>(null);
+  const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const arrastreRef = useRef<Arrastre | null>(null);
+  const objetivoRef = useRef<string | null>(null);
 
   const alternarTodo = (exp: boolean) =>
     setExpandido(exp
@@ -149,15 +167,120 @@ export function SkillTreeView({
     return out;
   }, [puestos, nodos]);
 
+  /* --------- Drag and drop por punteros --------- */
+
+  // ¿El destino bajo el puntero es válido para el nodo arrastrado?
+  const destinoValido = (dropId: string | null, a: Arrastre | null): boolean => {
+    if (!dropId || !a) return false;
+    if (dropId === RAIZ) return indice.get(a.id)?.parent !== especialidadId;
+    if (dropId === a.id || a.descendientes.has(dropId)) return false;
+    const destino = indice.get(dropId);
+    if (!destino || destino.clase !== "dominio") return false;
+    return indice.get(a.id)?.parent !== dropId; // ya está ahí
+  };
+
+  const iniciarArrastre = (nodo: Nodo, e: React.PointerEvent) => {
+    if (!modoEdicion || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const a: Arrastre = {
+      id: nodo.id,
+      titulo: nodo.titulo,
+      descendientes: new Set(descendientesDe(nodos, nodo.id).map(d => d.id)),
+    };
+    arrastreRef.current = a;
+    setArrastre(a);
+    setAviso(null);
+    setGhost({ x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    if (!arrastre) return;
+
+    const hallarDrop = (x: number, y: number): string | null => {
+      const el = document.elementFromPoint(x, y);
+      const con = el?.closest("[data-drop-id]") as HTMLElement | null;
+      return con?.getAttribute("data-drop-id") ?? null;
+    };
+
+    const onMove = (e: PointerEvent) => {
+      e.preventDefault();
+      setGhost({ x: e.clientX, y: e.clientY });
+      const dropId = hallarDrop(e.clientX, e.clientY);
+      const valido = destinoValido(dropId, arrastreRef.current);
+      const nuevo = valido ? dropId : null;
+      objetivoRef.current = nuevo;
+      setObjetivo(nuevo);
+    };
+
+    const onUp = () => {
+      const a = arrastreRef.current;
+      const destino = objetivoRef.current;
+      if (a && destino) {
+        const nuevoParent = destino === RAIZ ? especialidadId : destino;
+        const err = moverNodo(a.id, nuevoParent);
+        if (err) setAviso(err);
+        else {
+          const dest = destino === RAIZ
+            ? (especialidad?.titulo ?? "nivel principal")
+            : (indice.get(destino)?.titulo ?? "destino");
+          setAviso(`"${a.titulo}" → ${dest} ✓`);
+          if (destino !== RAIZ) setExpandido(prev => new Set(prev).add(destino));
+          setTimeout(() => setAviso(null), 2600);
+        }
+      }
+      arrastreRef.current = null;
+      objetivoRef.current = null;
+      setArrastre(null);
+      setObjetivo(null);
+      setGhost(null);
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [arrastre, especialidadId, especialidad, indice, moverNodo]);
+
+  const salirEdicion = () => {
+    setModoEdicion(false);
+    setArrastre(null);
+    setObjetivo(null);
+    setGhost(null);
+  };
+
   return (
     <div className="zona-arbol">
       <div className="barra-arbol">
         <div className="fila-botones">
           <button className="boton-secundario chico" onClick={() => alternarTodo(true)}>Expandir todo</button>
           <button className="boton-secundario chico" onClick={() => alternarTodo(false)}>Colapsar todo</button>
+          <button
+            className={modoEdicion ? "boton-principal chico" : "boton-secundario chico"}
+            style={{ marginTop: 0 }}
+            onClick={() => (modoEdicion ? salirEdicion() : setModoEdicion(true))}>
+            {modoEdicion ? "✓ Listo" : "✏️ Modificar"}
+          </button>
         </div>
         <button className="boton-taller" onClick={onAbrirCrearPrincipal}>+ Nodo principal</button>
       </div>
+
+      {modoEdicion && (
+        <div className="barra-edicion">
+          <span className="nota-fina">
+            Arrastra un nodo y suéltalo sobre un dominio para cambiar su padre.
+          </span>
+          <span
+            data-drop-id={RAIZ}
+            className={`zona-raiz ${objetivo === RAIZ ? "activa" : ""}`}>
+            ⤒ soltar aquí → nivel principal de {especialidad?.titulo ?? ""}
+          </span>
+        </div>
+      )}
+
+      {aviso && <div className="aviso-mover">{aviso}</div>}
 
       {roots.length === 0 ? (
         <div className="vacio">
@@ -167,7 +290,8 @@ export function SkillTreeView({
       ) : (
         <div className="lienzo-scroll">
           <svg width={ancho} height={alto} viewBox={`0 0 ${ancho} ${alto}`}
-               role="img" aria-label="Árbol de habilidades">
+               role="img" aria-label="Árbol de habilidades"
+               style={{ touchAction: modoEdicion ? "none" : "auto" }}>
 
             {/* Bordes */}
             {nodosRender.map(nodo => {
@@ -186,7 +310,8 @@ export function SkillTreeView({
                     stroke={isAspecto ? from.color : "rgba(96,140,134,0.35)"}
                     strokeWidth="1.4"
                     strokeDasharray={isAspecto ? "none" : "5 4"}
-                    fill="none" opacity="0.72" />
+                    fill="none" opacity="0.72"
+                    style={{ pointerEvents: "none" }} />
                 );
               });
             })}
@@ -200,28 +325,49 @@ export function SkillTreeView({
               const abierto = expandido.has(nodo.id);
               const tieneHijos = hijos(nodo.id).length > 0;
               const sigla = esDom ? "▸" : (SIGLA_TIPO[nodo.tipo ?? "transversal"] ?? "?");
+              const esObjetivo = objetivo === nodo.id;
+              const esArrastrado = arrastre?.id === nodo.id;
 
               const strokeColor =
+                esObjetivo ? "var(--exito, #2ee6a8)" :
                 estado === "bloqueado" ? "rgba(96,140,134,0.3)" :
                 estado === "en_progreso" ? "var(--cauterio)" :
                 pos.color;
 
+              const abrir = () => {
+                if (modoEdicion) return; // en edición, clic no navega
+                esDom ? onAbrirDominio(nodo.id) : onAbrirEstudio(nodo.id);
+              };
+
               return (
-                <g key={nodo.id} style={{ cursor: "pointer" }}
-                   onClick={() => esDom ? onAbrirDominio(nodo.id) : onAbrirEstudio(nodo.id)}
+                <g key={nodo.id}
+                   data-drop-id={nodo.id}
+                   style={{
+                     cursor: modoEdicion ? "grab" : "pointer",
+                     opacity: esArrastrado ? 0.35 : 1,
+                   }}
+                   onPointerDown={e => iniciarArrastre(nodo, e)}
+                   onClick={abrir}
                    role="button" tabIndex={0}
-                   onKeyDown={e => e.key === "Enter" &&
-                     (esDom ? onAbrirDominio(nodo.id) : onAbrirEstudio(nodo.id))}>
+                   onKeyDown={e => e.key === "Enter" && abrir()}>
 
                   {/* Área clickable ampliada */}
                   <circle cx={pos.x} cy={pos.y} r={NR + 6} fill="transparent" />
+
+                  {/* Halo de destino válido */}
+                  {esObjetivo && (
+                    <circle cx={pos.x} cy={pos.y} r={NR + 8} fill="none"
+                            stroke="var(--exito, #2ee6a8)" strokeWidth="2"
+                            strokeDasharray="4 3" style={{ pointerEvents: "none" }} />
+                  )}
 
                   {/* Círculo principal */}
                   <circle cx={pos.x} cy={pos.y} r={NR}
                     fill={estado === "dominado" ? pos.color + "25" : "var(--superficie-2)"}
                     stroke={strokeColor}
-                    strokeWidth={estado === "bloqueado" ? 1 : 1.8}
-                    strokeDasharray={estado === "bloqueado" ? "3 3" : "none"} />
+                    strokeWidth={esObjetivo ? 2.4 : estado === "bloqueado" ? 1 : 1.8}
+                    strokeDasharray={estado === "bloqueado" ? "3 3" : "none"}
+                    style={{ pointerEvents: "none" }} />
 
                   {/* Sigla */}
                   <text x={pos.x} y={pos.y + (esDom ? 5 : 4)} textAnchor="middle"
@@ -244,7 +390,9 @@ export function SkillTreeView({
 
                   {/* Botón expandir/colapsar */}
                   {esDom && tieneHijos && (
-                    <g onClick={e => alternar(nodo.id, e)} style={{ cursor: "pointer" }}>
+                    <g onClick={e => alternar(nodo.id, e)}
+                       onPointerDown={e => e.stopPropagation()}
+                       style={{ cursor: "pointer" }}>
                       <circle cx={pos.x + NR - 1} cy={pos.y - NR + 1} r={7}
                         fill="var(--superficie)" stroke={pos.color} strokeWidth="1.2" />
                       <text x={pos.x + NR - 1} y={pos.y - NR + 5.5}
@@ -259,6 +407,14 @@ export function SkillTreeView({
               );
             })}
           </svg>
+        </div>
+      )}
+
+      {/* Fantasma que sigue al cursor mientras se arrastra */}
+      {arrastre && ghost && (
+        <div className="fantasma-arrastre"
+             style={{ left: ghost.x + 14, top: ghost.y + 14 }}>
+          {arrastre.titulo}
         </div>
       )}
     </div>
