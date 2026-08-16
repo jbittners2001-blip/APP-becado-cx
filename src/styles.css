@@ -414,3 +414,22 @@ svg g[role="button"]:focus circle:first-of-type { stroke: var(--vital); opacity:
   background: var(--superficie-2); border: 1px solid var(--linea); color: var(--texto);
   font-size: 13px; padding: 3px 6px; border-radius: 4px; max-width: 150px;
 }
+
+/* Buscador del árbol */
+.buscador-arbol { position: relative; flex: 1; min-width: 200px; max-width: 380px; }
+.buscador-arbol .input-linea { width: 100%; }
+.buscador-resultados {
+  position: absolute; z-index: 50; top: calc(100% + 4px); left: 0; right: 0;
+  list-style: none; margin: 0; padding: 4px; max-height: 320px; overflow-y: auto;
+  background: var(--superficie); border: 1px solid var(--linea); border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+.buscador-resultados li { margin: 0; }
+.buscador-resultados button {
+  width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  color: var(--texto); padding: 8px 10px; border-radius: 5px; display: flex;
+  flex-direction: column; gap: 2px; font-size: 13px;
+}
+.buscador-resultados button:hover { background: var(--superficie-2); }
+.buscador-ruta { font-family: var(--mono); font-size: 10px; color: var(--apagado); }
+.buscador-vacio { padding: 10px; color: var(--apagado); font-size: 13px; }

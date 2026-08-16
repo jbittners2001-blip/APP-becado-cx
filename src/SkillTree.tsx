@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "./store";
-import { separarAspectosYSubtemas, descendientesDe } from "./content";
+import { separarAspectosYSubtemas, descendientesDe, rutaHasta } from "./content";
 import { SIGLA_TIPO, type Nodo } from "./types";
 
 const NR  = 18;   // radio del nodo
@@ -130,7 +130,26 @@ export function SkillTreeView({
     () => new Set(roots.map(r => r.id))
   );
 
+  const [busqueda, setBusqueda] = useState("");
   const [modoEdicion, setModoEdicion] = useState(false);
+
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const resultados = useMemo(() => {
+    const q = norm(busqueda.trim());
+    if (q.length < 2) return [];
+    return descendientesDe(nodos, especialidadId)
+      .filter((n) => norm(n.titulo).includes(q))
+      .slice(0, 12);
+  }, [busqueda, nodos, especialidadId]);
+
+  const irAResultado = (id: string) => {
+    const ruta = rutaHasta(indice, id);
+    const ancestros = ruta.slice(0, -1).map((n) => n.id); // todos menos el propio nodo
+    setExpandido((prev) => new Set([...prev, ...ancestros]));
+    const n = indice.get(id);
+    if (n) (n.clase === "dominio" ? onAbrirDominio : onAbrirEstudio)(id);
+    setBusqueda("");
+  };
   const [arrastre, setArrastre] = useState<Arrastre | null>(null);
   const [objetivo, setObjetivo] = useState<string | null>(null);
   const [ghost, setGhost] = useState<{ x: number; y: number } | null>(null);
@@ -263,6 +282,28 @@ export function SkillTreeView({
             onClick={() => (modoEdicion ? salirEdicion() : setModoEdicion(true))}>
             {modoEdicion ? "✓ Listo" : "✏️ Modificar"}
           </button>
+        </div>
+        <div className="buscador-arbol">
+          <input className="input-linea" value={busqueda} placeholder="🔍 Buscar tema o subtema…"
+                 onChange={(e) => setBusqueda(e.target.value)} />
+          {resultados.length > 0 && (
+            <ul className="buscador-resultados">
+              {resultados.map((n) => {
+                const ruta = rutaHasta(indice, n.id).slice(0, -1).map((x) => x.titulo).join(" › ");
+                return (
+                  <li key={n.id}>
+                    <button onClick={() => irAResultado(n.id)}>
+                      <strong>{n.titulo}</strong>
+                      {ruta && <span className="buscador-ruta">{ruta}</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {busqueda.trim().length >= 2 && resultados.length === 0 && (
+            <ul className="buscador-resultados"><li className="buscador-vacio">Sin resultados</li></ul>
+          )}
         </div>
         <button className="boton-taller" onClick={onAbrirCrearPrincipal}>+ Nodo principal</button>
       </div>

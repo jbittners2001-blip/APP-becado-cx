@@ -253,13 +253,24 @@ function SeccionIA() {
 
       <label className="campo">
         <span>Modelo</span>
-        <input className="input-linea" list={`modelos-${cfg.proveedor}`}
-               value={cfg.modelos[cfg.proveedor]}
-               onChange={(e) => actualizar({ ...cfg, modelos: { ...cfg.modelos, [cfg.proveedor]: e.target.value } })} />
-        <datalist id={`modelos-${cfg.proveedor}`}>
-          {MODELOS_SUGERIDOS[cfg.proveedor].map((m) => <option key={m} value={m} />)}
-        </datalist>
+        <select
+          value={MODELOS_SUGERIDOS[cfg.proveedor].includes(cfg.modelos[cfg.proveedor]) ? cfg.modelos[cfg.proveedor] : "__otro__"}
+          onChange={(e) => {
+            const v = e.target.value;
+            actualizar({ ...cfg, modelos: { ...cfg.modelos, [cfg.proveedor]: v === "__otro__" ? "" : v } });
+          }}>
+          {MODELOS_SUGERIDOS[cfg.proveedor].map((m) => <option key={m} value={m}>{m}</option>)}
+          <option value="__otro__">Personalizado…</option>
+        </select>
       </label>
+      {!MODELOS_SUGERIDOS[cfg.proveedor].includes(cfg.modelos[cfg.proveedor]) && (
+        <label className="campo">
+          <span>Nombre del modelo (personalizado)</span>
+          <input className="input-linea" value={cfg.modelos[cfg.proveedor]}
+                 placeholder="ej: claude-sonnet-5"
+                 onChange={(e) => actualizar({ ...cfg, modelos: { ...cfg.modelos, [cfg.proveedor]: e.target.value } })} />
+        </label>
+      )}
 
       {guardado && <p className="aviso-ok">Guardado.</p>}
       <p className="nota-fina">
